@@ -1,0 +1,41 @@
+{
+  "name": "ipfs-webrtc-direct",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "vite"
+  },
+  "license": "ISC",
+  "browser": {
+    "crypto": false
+  },
+  "dependencies": {
+    "@chainsafe/libp2p-noise": "^11.0.0",
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@libp2p/bootstrap": "^5.0.0",
+    "@libp2p/mplex": "^7.0.0",
+    "@libp2p/webrtc-direct": "^5.0.0",
+    "assert": "^2.0.0",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.0",
+    "https-browserify": "^1.0.0",
+    "ipfs-core": "^0.18.0",
+    "libp2p": "^0.43.2",
+    "os-browserify": "^0.3.0",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "url": "^0.11.0",
+    "vite-plugin-svgr": "^2.4.0",
+    "vite-tsconfig-paths": "^4.0.7",
+    "wrtc": "^0.4.7"
+  },
+  "devDependencies": {
+    "@mapbox/node-pre-gyp": "^1.0.8",
+    "process": "^0.11.10",
+    "vite": "^2.8.6"
+  }
+}
