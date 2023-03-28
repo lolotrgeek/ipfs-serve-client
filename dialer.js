@@ -105,13 +105,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   })
 
+  let said_hi = 0
+
   setInterval(async () => {
     try {
       // const peers = await ipfs.swarm.peers()
       updateStatus(`The node now has ${peers.length} peers.`)
 
+      said_hi++
+      ipfs.pubsub.publish('msg' , new TextEncoder().encode(JSON.stringify({signer: config.Identity.PeerID, value: "hello from "+config.Identity.PeerID+" "+said_hi})))
       
-      ipfs.pubsub.publish('msg' , new TextEncoder().encode(JSON.stringify({signer: config.Identity.PeerID, value: "hello from "+config.Identity.PeerID})))
 
     } catch (err) {
       log('An error occurred trying to check our peers:', err)
