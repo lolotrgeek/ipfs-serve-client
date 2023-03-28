@@ -21,7 +21,6 @@ const decodeMessage = msg => {
   } catch (error) {
     return error
   }
-
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -56,8 +55,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
   const status = document.getElementById('status')
   const output = document.getElementById('output')
-
+  status.textContent = ''
   output.textContent = ''
+
+  function updateStatus(txt) {
+    console.info(txt)
+    status.textContent = `${txt.trim()}`
+  }
 
   function log(txt) {
     console.info(txt)
@@ -74,7 +78,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Lets log out the number of peers we have every 2 seconds
 
   ipfs.pubsub.subscribe('msg', (msg) => { 
-    log(decodeMessage(msg))
+    let parsedmsg = JSON.parse(decodeMessage(msg))
+    if(parsedmsg.signer !== config.Identity.PeerID) log(parsedmsg.value)
   })
 
   ipfs.pubsub.subscribe('peers', msg => {
@@ -82,17 +87,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         let remote_peers = JSON.parse(decodeMessage(msg))
         remote_peers.forEach( remote_peer => {
           peers.find(peer => peer.peer === remote_peer.peer) || peers.push(remote_peer)
-          let address= `${peer.addr}/http/p2p-webrtc-direct/p2p/${peer.peer}`
+          // let address= `${peer.addr}/http/p2p-webrtc-direct/p2p/${peer.peer}`
           // ipfs.swarm.connect(address).catch(err => {
           //   console.log(`Could not dial ${address}`, err)
           // })
 
           // remove any remote peers that are not in peers
-          peers.forEach( (peer, index) => {
-            if (remote_peers.find(remote_peer => remote_peer.peer === peer.peer) === undefined) {
-              peers.splice(index, 1)
-            }
         })
+        peers.forEach( (peer, index) => {
+          if (remote_peers.find(remote_peer => remote_peer.peer === peer.peer) === undefined) {
+            peers.splice(index, 1)
+          }
       })
     } catch (error) {
       console.log(msg)
@@ -102,11 +107,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setInterval(async () => {
     try {
-      const peers = await ipfs.swarm.peers()
-      log(`The node now has ${peers.length} peers.`)
+      // const peers = await ipfs.swarm.peers()
+      updateStatus(`The node now has ${peers.length} peers.`)
 
       
-      ipfs.pubsub.publish('msg' , new TextEncoder().encode("hello from "+config.Identity.PeerID))
+      ipfs.pubsub.publish('msg' , new TextEncoder().encode(JSON.stringify({signer: config.Identity.PeerID, value: "hello from "+config.Identity.PeerID})))
 
     } catch (err) {
       log('An error occurred trying to check our peers:', err)

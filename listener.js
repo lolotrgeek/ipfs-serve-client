@@ -13,6 +13,16 @@ import { circuitRelayTransport, circuitRelayServer } from 'libp2p/circuit-relay'
 import { kadDHT } from '@libp2p/kad-dht'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 
+const decodeMessage = msg => {
+  try {
+    if (typeof msg === 'object') {
+      return new TextDecoder().decode(msg.data)
+    }
+    else return new Error('msg is not a string or object')
+  } catch (error) {
+    return error
+  }
+}
 
 const wrtcStar = webRTCStar()
 
@@ -46,11 +56,11 @@ const wrtcStar = webRTCStar()
       repo: "listener" + Math.random(),
       libp2p: libp2pBundle
     })
-    let last_msg = ''
+    let last_msg = "{data: 'no messages yet'}"
     // re-broadcast messages
     ipfs.pubsub.subscribe('msg', (msg) => { 
-      last_msg = msg
-      ipfs.pubsub.publish('msg', msg.data)
+      last_msg = JSON.parse(decodeMessage(msg))
+      // ipfs.pubsub.publish('msg', msg)
     })
 
     // Lets log out the number of peers we have every 2 seconds
@@ -59,7 +69,7 @@ const wrtcStar = webRTCStar()
         console.clear()
         const peers = await ipfs.swarm.peers()
         console.log(`The node now has ${peers.length} peers.`)
-        console.log('Last message:', new TextDecoder().decode(last_msg.data))
+        console.log('Last message:', last_msg)
         
         ipfs.pubsub.publish('peers', new TextEncoder().encode(JSON.stringify(peers)))
 
