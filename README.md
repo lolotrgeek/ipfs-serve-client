@@ -30,3 +30,8 @@ When in the root folder of this example, type `npm start` in terminal. You shoul
 the running client. Open this address in your browser. In console
 logs you should see logs about successful connection with the node client. In the output of node client you should see
 a log message about successful connection as well.
+
+
+## TODO: 
+integrate pubsub peer discovery
+https://github.com/libp2p/js-libp2p/tree/master/examples/discovery-mechanisms#3-pubsub-based-peer-discovery

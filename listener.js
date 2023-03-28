@@ -7,6 +7,14 @@ import { tcp } from '@libp2p/tcp'
 import { mdns } from '@libp2p/mdns'
 import { createFromJSON } from '@libp2p/peer-id-factory'
 import wrtc from 'wrtc'
+import { webSockets } from '@libp2p/websockets'
+import { webRTCStar } from '@libp2p/webrtc-star'
+import { circuitRelayTransport, circuitRelayServer } from 'libp2p/circuit-relay'
+import { kadDHT } from '@libp2p/kad-dht'
+import { gossipsub } from '@chainsafe/libp2p-gossipsub'
+
+
+const wrtcStar = webRTCStar()
 
   ; (async () => {
     // hardcoded peer id to avoid copy-pasting of listener's peer id into the dialer's bootstrap list
@@ -21,28 +29,29 @@ import wrtc from 'wrtc'
       addresses: {
         listen: [
           '/ip4/127.0.0.1/tcp/9090/http/p2p-webrtc-direct',
-          '/ip4/0.0.0.0/tcp/0'
+          '/ip4/0.0.0.0/tcp/0',
+          '/ip4/127.0.0.1/tcp/9099/ws'
         ]
       },
-      transports: [webRTCDirect({ wrtc }),tcp()],
+      pubsub: gossipsub({ allowPublishToZeroPeers: true , emitSelf: false}),
+      transports: [webRTCDirect({ wrtc }),webSockets(), circuitRelayTransport()],
       streamMuxers: [mplex()],
-      connectionEncryption: [noise()]
+      connectionEncryption: [noise()],
+      peerDiscovery: [
+        wrtcStar.discovery
+      ],
     })
 
     const ipfs = await IPFS.create({
       repo: "listener" + Math.random(),
       libp2p: libp2pBundle
     })
-
-    // const node = await libp2pBundle()
-
-    // node.connectionManager.addEventListener('peer:connect', (evt) => {
-    //   console.info(`Connected to ${evt.detail.remotePeer.toString()}!`)
-    // })
-
-    // console.log('Listening on:')
-    // node.getMultiaddrs().forEach((ma) => console.log(ma.toString()))
-
+    let last_msg = ''
+    // re-broadcast messages
+    ipfs.pubsub.subscribe('msg', (msg) => { 
+      last_msg = msg
+      ipfs.pubsub.publish('msg', msg.data)
+    })
 
     // Lets log out the number of peers we have every 2 seconds
     setInterval(async () => {
@@ -50,13 +59,9 @@ import wrtc from 'wrtc'
         console.clear()
         const peers = await ipfs.swarm.peers()
         console.log(`The node now has ${peers.length} peers.`)
-
-        // if (peers.length === 0) {
-        //     console.log("Connecting to bootstrap node...")
-        //     const bootstrapNode = multiaddr("/ip4/192.168.50.57/tcp/4001")
-        //     node.swarm.connect(bootstrapNode.toString())
-        // }
-
+        console.log('Last message:', new TextDecoder().decode(last_msg.data))
+        
+        ipfs.pubsub.publish('peers', new TextEncoder().encode(JSON.stringify(peers)))
 
       } catch (err) {
         console.log('An error occurred trying to check our peers:', err)
