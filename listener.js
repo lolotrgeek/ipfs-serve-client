@@ -73,10 +73,13 @@ const wrtcStar = webRTCStar()
     setInterval(async () => {
       try {
         console.clear()
-        const peers = await ipfs.swarm.peers()
+        // const peers = await ipfs.swarm.peers()
+        const peers = await ipfs.swarm.addrs()
+
         console.log(`The node now has ${peers.length} peers.`)
+        console.log("Address:", await ipfs.swarm.localAddrs())
         console.log('Last message:', last_msg)
-        console.log('Peers:', peers.map(p => p.peer))
+        console.log('Peers:', peers)
         ipfs.pubsub.publish('peers', new TextEncoder().encode(JSON.stringify(peers)))
 
       } catch (err) {
