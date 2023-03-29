@@ -10,7 +10,6 @@ import wrtc from 'wrtc'
 import { webSockets } from '@libp2p/websockets'
 import { webRTCStar } from '@libp2p/webrtc-star'
 import { circuitRelayTransport, circuitRelayServer } from 'libp2p/circuit-relay'
-import { kadDHT } from '@libp2p/kad-dht'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 
 const decodeMessage = msg => {
@@ -54,7 +53,14 @@ const wrtcStar = webRTCStar()
 
     const ipfs = await IPFS.create({
       repo: "listener" + Math.random(),
-      libp2p: libp2pBundle
+      libp2p: libp2pBundle,
+      config: {
+        Addresses: {
+          Delegates: [],
+          Bootstrap: []
+        },
+        Bootstrap: []
+      },
     })
     let last_msg = "{data: 'no messages yet'}"
     // re-broadcast messages
@@ -70,7 +76,7 @@ const wrtcStar = webRTCStar()
         const peers = await ipfs.swarm.peers()
         console.log(`The node now has ${peers.length} peers.`)
         console.log('Last message:', last_msg)
-        
+        console.log('Peers:', peers.map(p => p.peer))
         ipfs.pubsub.publish('peers', new TextEncoder().encode(JSON.stringify(peers)))
 
       } catch (err) {

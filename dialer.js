@@ -4,13 +4,10 @@ import { webRTCDirect } from '@libp2p/webrtc-direct'
 import { mplex } from '@libp2p/mplex'
 import { noise } from '@chainsafe/libp2p-noise'
 import { bootstrap } from '@libp2p/bootstrap'
-import { tcp } from '@libp2p/tcp'
 import { webRTCStar } from '@libp2p/webrtc-star'
 import { webSockets } from '@libp2p/websockets'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
-import { delegatedPeerRouting } from '@libp2p/delegated-peer-routing'
-import { circuitRelayTransport } from 'libp2p/circuit-relay'
-import { create as createIpfsHttpClient } from 'ipfs-http-client'
+import { createEd25519PeerId } from '@libp2p/peer-id-factory'
 
 const decodeMessage = msg => {
   try {
@@ -30,14 +27,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const hardcodedPeerId = '12D3KooWCuo3MdXfMgaqpLC5Houi1TRoFqgK9aoxok4NK5udMu8m'
   const bootstrapNode = [`/ip4/127.0.0.1/tcp/9090/http/p2p-webrtc-direct/p2p/${hardcodedPeerId}`]
 
+  let peerID = await createEd25519PeerId()
+
   const libp2pBundle = async () => await createLibp2p({
+    peerId: peerID,
     transports: [webSockets(), webRTCDirect(), wrtcStar.transport],
     streamMuxers: [mplex()],
     connectionEncryption: [noise()],
     pubsub: gossipsub({ allowPublishToZeroPeers: true }),
     peerDiscovery: [
       wrtcStar.discovery,
-      bootstrap({ list: bootstrapNode})
+      bootstrap({ list: bootstrapNode })
     ],
   })
 
@@ -51,9 +51,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
       Bootstrap: []
     },
-    
+
   })
   const status = document.getElementById('status')
+  const peerlist = document.getElementById('peerlist')
   const output = document.getElementById('output')
   status.textContent = ''
   output.textContent = ''
@@ -63,44 +64,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     status.textContent = `${txt.trim()}`
   }
 
+  function updatePeerList(txt) {
+    peerlist.textContent = `${txt.trim()}`
+  }
+
   function log(txt) {
     console.info(txt)
     output.textContent = `${txt.trim()}`
   }
 
-  log("ipfs is ready")
-
   const config = await ipfs.config.getAll()
   console.log(config)
 
-  log("ipfs is ready "+config.Identity.PeerID)
-
+  updateStatus("ipfs is ready " + peerID.toString())
   // Lets log out the number of peers we have every 2 seconds
 
-  ipfs.pubsub.subscribe('msg', (msg) => { 
+  ipfs.pubsub.subscribe('msg', (msg) => {
     let parsedmsg = JSON.parse(decodeMessage(msg))
-    if(parsedmsg.signer !== config.Identity.PeerID) log(parsedmsg.value)
+    if (parsedmsg.signer !== config.Identity.PeerID) log(parsedmsg.value)
   })
 
+  let attempts = []
   ipfs.pubsub.subscribe('peers', msg => {
     try {
-        let remote_peers = JSON.parse(decodeMessage(msg))
-        remote_peers.forEach( remote_peer => {
-          peers.find(peer => peer.peer === remote_peer.peer) || peers.push(remote_peer)
-          // let address= `${peer.addr}/http/p2p-webrtc-direct/p2p/${peer.peer}`
-          // ipfs.swarm.connect(address).catch(err => {
-          //   console.log(`Could not dial ${address}`, err)
-          // })
+      let remote_peers = JSON.parse(decodeMessage(msg))
+      remote_peers.forEach(remote_peer => {
+        if (remote_peer.peer === config.Identity.PeerID) return
+        peers.find(peer => peer.peer === remote_peer.peer) || peers.push(remote_peer)
 
-          // remove any remote peers that are not in peers
-        })
-        peers.forEach( (peer, index) => {
-          if (remote_peers.find(remote_peer => remote_peer.peer === peer.peer) === undefined) {
-            peers.splice(index, 1)
-          }
+        let address = `${remote_peer.addr}/http/p2p-webrtc-direct/p2p/${remote_peer.peer}`
+        let index = attempts.findIndex(attempt => attempt.address === address)
+        if (index === -1) attempts.push({ address, attempted: 0 })
+        else if (attempts[index].attempted > 3) return
+        else {
+          attempts[index].attempted++
+          ipfs.swarm.connect(address).catch(err => {
+            console.log(`Could not dial ${address}, tries ${attempts[index].attempted}`, err)
+          })
+        }
+
+        // remove any remote peers that are not in peers
       })
+      peers.forEach((peer, index) => {
+        if (remote_peers.find(remote_peer => remote_peer.peer === peer.peer) === undefined) {
+          console.log("removing peer", peer)
+          peers.splice(index, 1)
+        }
+      })
+
+      updatePeerList(`Peers: ${peers.map(peer => peer.peer).join(', ')}`)
     } catch (error) {
-      console.log(msg)
+      console.log(error)
     }
 
   })
@@ -110,11 +124,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(async () => {
     try {
       // const peers = await ipfs.swarm.peers()
-      updateStatus(`The node now has ${peers.length} peers.`)
 
       said_hi++
-      ipfs.pubsub.publish('msg' , new TextEncoder().encode(JSON.stringify({signer: config.Identity.PeerID, value: "hello from "+config.Identity.PeerID+" "+said_hi})))
-      
+      ipfs.pubsub.publish('msg', new TextEncoder().encode(JSON.stringify({ signer: config.Identity.PeerID, value: "hello from " + config.Identity.PeerID + " " + said_hi })))
+
 
     } catch (err) {
       log('An error occurred trying to check our peers:', err)
