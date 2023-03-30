@@ -59,13 +59,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updatePeerList(txt) {
     peerlist.textContent = `${txt.trim()}`
   }
-  function updateAttemptsList(txt) {
-    attemptslist.textContent = `${txt.trim()}`
+  function updateMessage(txt) {
+    message.textContent = `${txt.trim()}`
   }
 
   function log(txt) {
     console.info(txt)
-    output.textContent = `${txt.trim()}`
+    output.textContent += `${txt.trim()} \n`
   }
 
 
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   libp2p.pubsub.addEventListener('message', evt => {
     let msg = decodeMessage(evt.detail.data)
     if (evt.detail.topic === 'msg') {
-      log(`Message: ${msg}`)
+      updateMessage(`Message: ${msg}`)
     }
   })
   libp2p.pubsub.subscribe(('msg'))

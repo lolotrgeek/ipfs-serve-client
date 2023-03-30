@@ -102,6 +102,7 @@ const wrtcStar = webRTCStar()
       try {
         console.clear()
         let peers = await libp2p.peerStore.all()
+        console.log('Our peer id:', libp2p.peerId.toString())
         console.log(`The node now has ${peers.length} peers.`)
         console.log('Peers:', peers.map(p => p.id ? p.id : Object.keys(p)))
         console.log('Last message:', last_msg)
