@@ -1,5 +1,4 @@
 import { createLibp2p } from 'libp2p'
-import * as IPFS from 'ipfs-core'
 import { webRTCDirect } from '@libp2p/webrtc-direct'
 import { mplex } from '@libp2p/mplex'
 import { noise } from '@chainsafe/libp2p-noise'
@@ -15,7 +14,7 @@ import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 const decodeMessage = msg => {
   try {
     if (typeof msg === 'object') {
-      return new TextDecoder().decode(msg.data)
+      return new TextDecoder().decode(msg)
     }
     else return new Error('msg is not a string or object')
   } catch (error) {
@@ -33,7 +32,7 @@ const wrtcStar = webRTCStar()
       "privKey": "CAESQAG6Ld7ev6nnD0FKPs033/j0eQpjWilhxnzJ2CCTqT0+LfcWoI2Vr+zdc1vwk7XAVdyoCa2nwUR3RJebPWsF1/I=",
       "pubKey": "CAESIC33FqCNla/s3XNb8JO1wFXcqAmtp8FEd0SXmz1rBdfy"
     })
-    const libp2pBundle = async () => await createLibp2p({
+    const libp2p = await createLibp2p({
       peerId: hardcodedPeerId,
       addresses: {
         listen: [
@@ -51,36 +50,46 @@ const wrtcStar = webRTCStar()
       ],
     })
 
-    const ipfs = await IPFS.create({
-      repo: "listener" + Math.random(),
-      libp2p: libp2pBundle,
-      config: {
-        Addresses: {
-          Delegates: [],
-          Bootstrap: []
-        },
-        Bootstrap: []
-      },
-    })
+    const log = console.log
+
+
     let last_msg = "{data: 'no messages yet'}"
-    // re-broadcast messages
-    ipfs.pubsub.subscribe('msg', (msg) => { 
-      last_msg = JSON.parse(decodeMessage(msg))
-      // ipfs.pubsub.publish('msg', msg)
+    libp2p.pubsub.addEventListener('message', evt => {
+      let msg = decodeMessage(evt.detail.data)
+      if (evt.detail.topic === 'msg') {
+        last_msg = msg
+      }
+    })
+    libp2p.pubsub.subscribe(('msg'))
+
+    // Listen for new peers
+    libp2p.addEventListener('peer:discovery', (evt) => {
+      log(`Found peer ${evt.detail.id.toString()}`)
+
+      // dial them when we discover them
+      libp2p.dial(evt.detail.id).catch(err => {
+        log(`Could not dial ${evt.detail.id}`, err)
+      })
     })
 
-    // Lets log out the number of peers we have every 2 seconds
+    // Listen for new connections to peers
+    libp2p.connectionManager.addEventListener('peer:connect', (evt) => {
+      log(`Connected to ${evt.detail.remotePeer.toString()}`)
+    })
+
+    // Listen for peers disconnecting
+    libp2p.connectionManager.addEventListener('peer:disconnect', (evt) => {
+      log(`Disconnected from ${evt.detail.remotePeer.toString()}`)
+    })
+
     setInterval(async () => {
       try {
         console.clear()
-        // const peers = await ipfs.swarm.peers()
-        const peers = await ipfs.swarm.addrs()
-
+        let peers = await libp2p.peerStore.all()
         console.log(`The node now has ${peers.length} peers.`)
-        console.log("Address:", await ipfs.swarm.localAddrs())
         console.log('Last message:', last_msg)
-        console.log('Peers:', peers)
-        ipfs.pubsub.publish('peers', new TextEncoder().encode(JSON.stringify(peers)))
+
+        libp2p.pubsub.publish('peers', new TextEncoder().encode(JSON.stringify(peers)))
 
       } catch (err) {
         console.log('An error occurred trying to check our peers:', err)
