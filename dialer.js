@@ -9,6 +9,8 @@ import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 import { createEd25519PeerId } from '@libp2p/peer-id-factory'
 import * as IPFS from 'ipfs-core'
 import { decodeMessage } from './utils.js'
+import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
+
 
 // https://github.com/libp2p/js-libp2p/blob/master/examples/libp2p-in-the-browser/index.js
 
@@ -34,7 +36,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     pubsub: gossipsub({ allowPublishToZeroPeers: true }),
     peerDiscovery: [
       wrtcStar.discovery,
-      bootstrap({ list: bootstrapNode })
+      bootstrap({ list: bootstrapNode }),
+      pubsubPeerDiscovery({ interval: 1000 })
     ],
   })
 

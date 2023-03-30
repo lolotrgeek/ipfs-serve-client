@@ -20,7 +20,6 @@ import { BlockstoreDatastoreAdapter } from 'blockstore-datastore-adapter'
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { FsDatastore } from 'datastore-fs'
-import { FSLock } from 'ipfs-repo/locks/fs'
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,7 +50,7 @@ function loadCodec(codeOrName) {
   }
   const hardcodedPeerId = await createFromJSON(ourInfo)
 
-  let path = __dirname+'/listener'
+  let path = __dirname + '/listener'
 
   const libp2pBundle = async () => await createLibp2p({
     peerId: hardcodedPeerId,
@@ -72,7 +71,9 @@ function loadCodec(codeOrName) {
     ],
   })
 
-
+  // https://github.com/ipfs-examples/js-ipfs-examples/blob/master/examples/custom-ipfs-repo/index.js
+  // https://github.com/ipfs/js-ipfs-repo
+  // TODO: https://github.com/ipfs/js-ipfs-repo/tree/master/packages/ipfs-repo-migrations
   let repo = createRepo(path, loadCodec, {
     /**
      * IPFS repos store different types of information in separate datastores.
@@ -110,8 +111,6 @@ function loadCodec(codeOrName) {
       createIfMissing: true
     })
   })
-  // await repo.init({})
-  // await repo.open()
 
   const ipfs = await IPFS.create({
     repo,
@@ -146,7 +145,9 @@ function loadCodec(codeOrName) {
   process.stdin.resume();//so the program will not close instantly
 
   function exitHandler(options, exitCode) {
+    ipfs.stop()
     repo.close()
+    
     if (options.cleanup) console.log('clean');
     if (exitCode || exitCode === 0) console.log(exitCode);
     if (options.exit) process.exit();
