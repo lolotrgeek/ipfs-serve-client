@@ -19,6 +19,8 @@
     "@libp2p/mplex": "^7.0.0",
     "@libp2p/pubsub-peer-discovery": "^8.0.2",
     "@libp2p/webrtc-direct": "^5.0.0",
+    "@libp2p/webrtc-star": "^6.0.0",
+    "@libp2p/webrtc-star-signalling-server": "^3.0.0",
     "assert": "^2.0.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.0",

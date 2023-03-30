@@ -29,6 +29,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const libp2p = await createLibp2p({
     peerId: peerID,
+    addresses: {
+      listen: [
+        "/dns4/localhost/tcp/24642/ws/p2p-webrtc-star/",
+      ],
+    },
     transports: [webSockets(), webRTCDirect(), wrtcStar.transport],
     streamMuxers: [mplex()],
     connectionEncryption: [noise()],
@@ -67,12 +72,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateStatus("libp2p is ready " + peerID.toString())
   // Lets log out the number of peers we have every 2 seconds
 
-  const peers = []
-
   // Listen for new peers
   libp2p.addEventListener('peer:discovery', (evt) => {
     log(`Found peer ${evt.detail.id.toString()}`)
-    peers.push(evt.detail)
 
     // dial them when we discover them
     libp2p.dial(evt.detail.id).catch(err => {
@@ -90,21 +92,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     log(`Disconnected from ${evt.detail.remotePeer.toString()}`)
   })
 
-  status.innerText = 'libp2p started!'
-  log(`libp2p id is ${libp2p.peerId.toString()}`)
+  updateStatus(`libp2p id is ${libp2p.peerId.toString()}`)
   let said_hi = 0
 
   libp2p.pubsub.addEventListener('message', evt => {
     let msg = decodeMessage(evt.detail.data)
-    if (evt.detail.topic === 'peers') {
-      let remote_peers = JSON.parse(msg)
-      remote_peers.forEach(peer => {
-        libp2p.dial(peer.id).catch(err => {
-          log(`Could not dial ${peer.id}`, err)
-        })
-      })
-      log(`Remote Peers: ${remote_peers.join(',')}`)
-    }
     if (evt.detail.topic === 'msg') {
       log(`Message: ${msg}`)
     }
@@ -114,7 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setInterval(async () => {
     try {
-      // console.log("Peers:", peers)
+      let peers = await libp2p.peerStore.all()
       updatePeerList(`Peers: ${peers.map(peer => peer.id).join(', \n')}`)
 
       said_hi++

@@ -3,13 +3,12 @@ import { webRTCDirect } from '@libp2p/webrtc-direct'
 import { mplex } from '@libp2p/mplex'
 import { noise } from '@chainsafe/libp2p-noise'
 import { tcp } from '@libp2p/tcp'
-import { mdns } from '@libp2p/mdns'
 import { createFromJSON } from '@libp2p/peer-id-factory'
 import wrtc from 'wrtc'
 import { webSockets } from '@libp2p/websockets'
 import { webRTCStar } from '@libp2p/webrtc-star'
-import { circuitRelayTransport, circuitRelayServer } from 'libp2p/circuit-relay'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
+import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 
 const decodeMessage = msg => {
   try {
@@ -32,6 +31,7 @@ const wrtcStar = webRTCStar()
       "privKey": "CAESQAG6Ld7ev6nnD0FKPs033/j0eQpjWilhxnzJ2CCTqT0+LfcWoI2Vr+zdc1vwk7XAVdyoCa2nwUR3RJebPWsF1/I=",
       "pubKey": "CAESIC33FqCNla/s3XNb8JO1wFXcqAmtp8FEd0SXmz1rBdfy"
     })
+
     const libp2p = await createLibp2p({
       peerId: hardcodedPeerId,
       addresses: {
@@ -42,11 +42,12 @@ const wrtcStar = webRTCStar()
         ]
       },
       pubsub: gossipsub({ allowPublishToZeroPeers: true , emitSelf: false}),
-      transports: [webRTCDirect({ wrtc }),webSockets(), circuitRelayTransport()],
+      transports: [webRTCDirect({ wrtc }),webSockets(), tcp(), wrtcStar.transport],
       streamMuxers: [mplex()],
       connectionEncryption: [noise()],
       peerDiscovery: [
-        wrtcStar.discovery
+        wrtcStar.discovery,
+        pubsubPeerDiscovery({interval: 1000})
       ],
     })
 
@@ -64,7 +65,7 @@ const wrtcStar = webRTCStar()
 
     // Listen for new peers
     libp2p.addEventListener('peer:discovery', (evt) => {
-      log(`Found peer ${evt.detail.id.toString()}`)
+      // log(`Found peer ${evt.detail.id.toString()}`)
 
       // dial them when we discover them
       libp2p.dial(evt.detail.id).catch(err => {
@@ -87,9 +88,9 @@ const wrtcStar = webRTCStar()
         console.clear()
         let peers = await libp2p.peerStore.all()
         console.log(`The node now has ${peers.length} peers.`)
+        console.log('Peers:', peers.map(p => p.id ? p.id : Object.keys(p)))
         console.log('Last message:', last_msg)
 
-        libp2p.pubsub.publish('peers', new TextEncoder().encode(JSON.stringify(peers)))
 
       } catch (err) {
         console.log('An error occurred trying to check our peers:', err)
