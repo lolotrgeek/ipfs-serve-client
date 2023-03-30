@@ -7,20 +7,11 @@ import { webRTCStar } from '@libp2p/webrtc-star'
 import { webSockets } from '@libp2p/websockets'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 import { createEd25519PeerId } from '@libp2p/peer-id-factory'
-
+import * as IPFS from 'ipfs-core'
+import { decodeMessage } from './utils.js'
 
 // https://github.com/libp2p/js-libp2p/blob/master/examples/libp2p-in-the-browser/index.js
 
-const decodeMessage = msg => {
-  try {
-    if (typeof msg === 'object') {
-      return new TextDecoder().decode(msg)
-    }
-    else return new Error('msg is not a string or object')
-  } catch (error) {
-    return error
-  }
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
   const wrtcStar = webRTCStar()
@@ -30,7 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let peerID = await createEd25519PeerId()
 
-  const libp2p = await createLibp2p({
+  const libp2pBundle = async () => await createLibp2p({
     peerId: peerID,
     addresses: {
       listen: [
@@ -47,10 +38,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     ],
   })
 
+
+  const ipfs = await IPFS.create({
+    repo: "dailer" + Math.random(),
+    libp2p: libp2pBundle,
+    config: {Addresses: {Delegates: [],Bootstrap: []},Bootstrap: []},
+  })
+          
   const status = document.getElementById('status')
   const peerlist = document.getElementById('peerlist')
   const output = document.getElementById('output')
-  const attemptslist = document.getElementById('attempts')
+  const message = document.getElementById('message')
   status.textContent = ''
   output.textContent = ''
 
@@ -71,50 +69,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     output.textContent += `${txt.trim()} \n`
   }
 
-
-  updateStatus("libp2p is ready " + peerID.toString())
+  updateStatus("ipfs is ready " + peerID.toString())
   // Lets log out the number of peers we have every 2 seconds
 
-  // Listen for new peers
-  libp2p.addEventListener('peer:discovery', (evt) => {
-    log(`Found peer ${evt.detail.id.toString()}`)
-
-    // dial them when we discover them
-    libp2p.dial(evt.detail.id).catch(err => {
-      log(`Could not dial ${evt.detail.id}`, err)
-    })
-  })
-
-  // Listen for new connections to peers
-  libp2p.connectionManager.addEventListener('peer:connect', (evt) => {
-    log(`Connected to ${evt.detail.remotePeer.toString()}`)
-  })
-
-  // Listen for peers disconnecting
-  libp2p.connectionManager.addEventListener('peer:disconnect', (evt) => {
-    log(`Disconnected from ${evt.detail.remotePeer.toString()}`)
-  })
-
-  updateStatus(`libp2p id is ${libp2p.peerId.toString()}`)
   let said_hi = 0
 
-  libp2p.pubsub.addEventListener('message', evt => {
-    let msg = decodeMessage(evt.detail.data)
-    if (evt.detail.topic === 'msg') {
-      updateMessage(`Message: ${msg}`)
-    }
+  ipfs.pubsub.subscribe('msg', evt => {
+    let msg = decodeMessage(evt.data)
+    updateMessage(msg)
   })
-  libp2p.pubsub.subscribe(('msg'))
-  libp2p.pubsub.subscribe(('peers'))
 
   setInterval(async () => {
     try {
-      let peers = await libp2p.peerStore.all()
+      const peers = await ipfs.swarm.addrs()
       updatePeerList(`Peers: ${peers.map(peer => peer.id).join(', \n')}`)
 
       said_hi++
       let msg = new TextEncoder().encode(JSON.stringify({ signer: peerID.toString(), value: "hello from " + peerID.toString() + " " + said_hi }))
-      await libp2p.pubsub.publish('msg', msg)
+      await ipfs.pubsub.publish('msg', msg)
 
     } catch (err) {
       log('An error occurred trying to check our peers:', err)

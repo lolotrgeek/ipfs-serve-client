@@ -15,20 +15,11 @@ import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 
 import getPort from 'get-port';
 
-const decodeMessage = msg => {
-  try {
-    if (typeof msg === 'object') {
-      return new TextDecoder().decode(msg)
-    }
-    else return new Error('msg is not a string or object')
-  } catch (error) {
-    return error
-  }
-}
-
-const wrtcStar = webRTCStar()
+import * as IPFS from 'ipfs-core'
+import { decodeMessage } from './utils.js'
 
   ; (async () => {
+    const wrtcStar = webRTCStar()
     // hardcoded peer id to avoid copy-pasting of listener's peer id into the dialer's bootstrap list
     // generated with cmd `peer-id --type=ed25519`
     const bootstrapPeerID = "12D3KooWCuo3MdXfMgaqpLC5Houi1TRoFqgK9aoxok4NK5udMu8m"
@@ -36,7 +27,7 @@ const wrtcStar = webRTCStar()
     let peerID = await createEd25519PeerId()
     let port = await getPort()
 
-    const libp2p = await createLibp2p({
+    const libp2pBundle = async () => await createLibp2p({
       peerId: peerID,
       addresses: {
         listen: [
@@ -52,58 +43,28 @@ const wrtcStar = webRTCStar()
       connectionEncryption: [noise()],
       peerDiscovery: [
         wrtcStar.discovery,
-        pubsubPeerDiscovery({interval: 1000}),
+        pubsubPeerDiscovery({ interval: 1000 }),
         bootstrap({ list: bootstrapNode })
       ],
     })
-
-    const log = console.log
-
-    const receivePeers = (remote_peers) => {
-      remote_peers.forEach(peer => {
-        if (peer.id !== peerID.toString()) libp2p.dial(peer.id).catch(err => { log(`Could not dial ${peer.id}`) })
-      })
-      log(`Remote Peers: ${remote_peers.join(',')}`)
-    }
+    const ipfs = await IPFS.create({
+      repo: "relay" + Math.random(),
+      libp2p: libp2pBundle,
+      config: {Addresses: {Delegates: [],Bootstrap: []},Bootstrap: []},
+    })
 
     // https://github.com/libp2p/js-libp2p/tree/master/examples/pubsub
     let last_msg = "{data: 'no messages yet'}"
-    libp2p.pubsub.addEventListener('message', evt => {
-      let msg = decodeMessage(evt.detail.data)
-      if (evt.detail.topic === 'msg') {
-        // log(`Message: ${msg}`)
-        last_msg = msg
-        log(msg)
-      }
-    })
-    libp2p.pubsub.subscribe(('msg'))
-    libp2p.pubsub.subscribe(('peers'))
-
-
-    // Listen for new peers
-    libp2p.addEventListener('peer:discovery', (evt) => {
-      // log(`Found peer ${evt.detail.id.toString()}`)
-      // dial them when we discover them
-      libp2p.dial(evt.detail.id).catch(err => {
-        log(`Could not dial ${evt.detail.id}`, err)
-      })
-    })
-
-    // Listen for new connections to peers
-    libp2p.connectionManager.addEventListener('peer:connect', (evt) => {
-      log(`Connected to ${evt.detail.remotePeer.toString()}`)
-    })
-
-    // Listen for peers disconnecting
-    libp2p.connectionManager.addEventListener('peer:disconnect', (evt) => {
-      log(`Disconnected from ${evt.detail.remotePeer.toString()}`)
+    ipfs.pubsub.subscribe('msg', evt => {
+      let msg = decodeMessage(evt.data)
+      last_msg = msg
     })
 
     setInterval(async () => {
       try {
         console.clear()
-        let peers = await libp2p.peerStore.all()
-        console.log('Our peer id:', libp2p.peerId.toString())
+        const peers = await ipfs.swarm.addrs()
+        console.log('Our peer id:', peerID.toString())
         console.log(`The node now has ${peers.length} peers.`)
         console.log('Peers:', peers.map(p => p.id ? p.id : Object.keys(p)))
         console.log('Last message:', last_msg)
