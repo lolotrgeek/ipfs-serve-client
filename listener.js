@@ -41,19 +41,19 @@ const wrtcStar = webRTCStar()
           '/ip4/127.0.0.1/tcp/9099/ws'
         ]
       },
-      pubsub: gossipsub({ allowPublishToZeroPeers: true , emitSelf: false}),
-      transports: [webRTCDirect({ wrtc }),webSockets(), tcp(), wrtcStar.transport],
+      pubsub: gossipsub({ allowPublishToZeroPeers: true, emitSelf: false }),
+      transports: [webRTCDirect({ wrtc }), webSockets(), tcp(), wrtcStar.transport],
       streamMuxers: [mplex()],
       connectionEncryption: [noise()],
       peerDiscovery: [
         wrtcStar.discovery,
-        pubsubPeerDiscovery({interval: 1000})
+        pubsubPeerDiscovery({ interval: 1000 })
       ],
     })
 
     const log = console.log
 
-
+    //https://github.com/libp2p/js-libp2p/tree/master/examples/pubsub
     let last_msg = "{data: 'no messages yet'}"
     libp2p.pubsub.addEventListener('message', evt => {
       let msg = decodeMessage(evt.detail.data)

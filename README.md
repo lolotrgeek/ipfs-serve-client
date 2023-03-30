@@ -1,5 +1,6 @@
 ### Webrtc-direct example
 
+
 An example that uses [@libp2p/webrtc-direct](https://github.com/libp2p/js-libp2p-webrtc-direct) for connecting
 nodejs libp2p and browser libp2p clients. To run the example:
 
@@ -31,7 +32,13 @@ the running client. Open this address in your browser. In console
 logs you should see logs about successful connection with the node client. In the output of node client you should see
 a log message about successful connection as well.
 
+## 3. Run Signaller
+```
+node signaller
+```
 
-## TODO: 
-integrate pubsub peer discovery
-https://github.com/libp2p/js-libp2p/tree/master/examples/discovery-mechanisms#3-pubsub-based-peer-discovery
+## 4. run Relay
+This is not necessary, but gives an idea of running a relay node, can run any number of instances
+```
+node relay
+```

@@ -66,6 +66,7 @@ const wrtcStar = webRTCStar()
       log(`Remote Peers: ${remote_peers.join(',')}`)
     }
 
+    // https://github.com/libp2p/js-libp2p/tree/master/examples/pubsub
     let last_msg = "{data: 'no messages yet'}"
     libp2p.pubsub.addEventListener('message', evt => {
       let msg = decodeMessage(evt.detail.data)

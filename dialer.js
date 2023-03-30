@@ -8,6 +8,9 @@ import { webSockets } from '@libp2p/websockets'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 import { createEd25519PeerId } from '@libp2p/peer-id-factory'
 
+
+// https://github.com/libp2p/js-libp2p/blob/master/examples/libp2p-in-the-browser/index.js
+
 const decodeMessage = msg => {
   try {
     if (typeof msg === 'object') {
