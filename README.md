@@ -42,3 +42,6 @@ This is not necessary, but gives an idea of running a relay node, can run any nu
 ```
 node relay
 ```
+
+## TODO: 
+- reconnecting to bootstrap/network
